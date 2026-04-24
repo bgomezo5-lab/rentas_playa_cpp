@@ -42,3 +42,9 @@ android {
 flutter {
     source = "../.."
 }
+
+externalNativeBuild {
+    cmake {
+        path = file("src/main/cpp/CMakeLists.txt")
+    }
+}
