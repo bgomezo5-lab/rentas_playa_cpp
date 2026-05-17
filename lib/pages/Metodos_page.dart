@@ -13,13 +13,12 @@ class MetodosPage extends StatelessWidget {
         backgroundColor: Colors.blue[900],
       ),
 
-      body: const Center(
-        child: Text(
-          "Bienvenido a Métodos Numéricos",
-          style: TextStyle(
-            fontSize: 22,
-            color: Colors.white,
-          ),
+      body: Center(
+        child: ElevatedButton(
+          onPressed: () {
+            print("Secante Modificada");
+          },
+          child: const Text("Secante Modificada"),
         ),
       ),
     );

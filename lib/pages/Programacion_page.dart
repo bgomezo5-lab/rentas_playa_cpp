@@ -180,9 +180,9 @@ class _ProgramacionPageState extends State<ProgramacionPage> {
               scrollDirection: Axis.horizontal,
               child: Row(
                 children: [
-                  _botonAccion("Pilas", funcionPila, Colors.red[700]!),
+                  _botonAccion("Colas", funcionPila, Colors.red[700]!),
                   const SizedBox(width: 10),
-                  _botonAccion("Colas", funcionCola, Colors.orange[800]!),
+                  _botonAccion("Pilas", funcionCola, Colors.orange[800]!),
                   const SizedBox(width: 10),
                   _botonAccion("Nodos", funcionNodos, Colors.teal[700]!),
                 ],
