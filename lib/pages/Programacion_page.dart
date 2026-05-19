@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:rentas_playa_cpp/api_service.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 class ProgramacionPage extends StatefulWidget {
   const ProgramacionPage({super.key});
@@ -9,23 +10,46 @@ class ProgramacionPage extends StatefulWidget {
 }
 
 class _ProgramacionPageState extends State<ProgramacionPage> {
+  // Unificamos el nombre de la lista a usar en todo el archivo
   List<dynamic> datosJson = [];
 
   // Controlador para capturar lo que escribes en el teclado
   final TextEditingController _controladorTexto = TextEditingController();
 
-  // --- CARGA INICIAL DESDE EL JSON ---
-  void cargarDatos() async {
+  // Variable para controlar el estado de carga visual
+  bool cargando = true;
+
+  // --- CARGA INICIAL DESDE LA API WEB (¡Aquí se ejecuta el cambio!) ---
+  @override
+  void initState() {
+    super.initState();
+    cargarDatosDesdeWeb();
+  }
+
+  // --- FUNCIÓN QUE CONECTA CON LA URL DE INTERNET ---
+  Future<void> cargarDatosDesdeWeb() async {
+    final url = Uri.parse('https://jsonplaceholder.typicode.com/todos');
+
     try {
-      final resultado = await ApiService.extraerDatos();
-      setState(() {
-      //usamos metodo addAll para unir las listas
-      //esto añade lo del json al final de lo que ya contiene la api
-        datosJson.addAll(resultado);
-      });
-      print("¡Éxito! Se cargaron ${resultado.length} elementos");
+      final respuesta = await http.get(url);
+
+      if (respuesta.statusCode == 200) {
+        // Decodificamos el JSON que viene de la web
+        final List<dynamic> datosWeb = jsonDecode(respuesta.body);
+
+        setState(() {
+          datosJson.clear();
+          datosJson.addAll(datosWeb); // Guardamos los 200 registros de la API
+          cargando = false;           // Apagamos la animación de carga
+        });
+        print("¡Éxito! Se cargaron ${datosWeb.length} elementos desde la API web");
+      } else {
+        setState(() => cargando = false);
+        print("Error en el servidor: ${respuesta.statusCode}");
+      }
     } catch (e) {
-      print("Error al cargar: $e");
+      setState(() => cargando = false);
+      print("Error de red: $e");
     }
   }
 
@@ -36,7 +60,7 @@ class _ProgramacionPageState extends State<ProgramacionPage> {
         // Insertamos un nuevo "Nodo" al inicio de la lista (Complejidad O(1))
         datosJson.insert(0, {
           "userId": 1,
-          "id": datosJson.length + 1,
+          "id": datosJson.isEmpty ? 1 : datosJson.map((e) => e['id'] as int).reduce((a, b) => a > b ? a : b) + 1,
           "title": _controladorTexto.text,
           "completed": false
         });
@@ -56,6 +80,8 @@ class _ProgramacionPageState extends State<ProgramacionPage> {
         datosJson.removeLast();
       });
       _mostrarAlerta("PILA (POP)", "Eliminado el último: ID ${eliminado['id']}", Colors.redAccent);
+    } else {
+      _mostrarAlerta("AVISO", "La memoria está vacía", Colors.orange);
     }
   }
 
@@ -67,6 +93,8 @@ class _ProgramacionPageState extends State<ProgramacionPage> {
         datosJson.removeAt(0);
       });
       _mostrarAlerta("COLA (FIFO)", "Eliminado el primero: ID ${eliminado['id']}", Colors.orangeAccent);
+    } else {
+      _mostrarAlerta("AVISO", "La memoria está vacía", Colors.orange);
     }
   }
 
@@ -78,23 +106,32 @@ class _ProgramacionPageState extends State<ProgramacionPage> {
         context: context,
         builder: (context) => AlertDialog(
           backgroundColor: Colors.grey[900],
-          title: const Text("Inspección de Nodo", style: TextStyle(color: Colors.white)),
+          title: const Text("Inspección de Nodo (CABEZA)", style: TextStyle(color: Colors.white)),
           content: Text(
             "Dato del Nodo: ${nodoActual['title']}\n\n"
-            "Puntero al Siguiente: ID ${datosJson.length > 1 ? datosJson[1]['id'] : 'null'}",
+                "Puntero al Siguiente: ID ${datosJson.length > 1 ? datosJson[1]['id'] : 'null'}",
             style: const TextStyle(color: Colors.white70),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cerrar")),
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Cerrar", style: TextStyle(color: Colors.blue)),
+            ),
           ],
         ),
       );
+    } else {
+      _mostrarAlerta("AVISO", "No hay nodos para inspeccionar", Colors.orange);
     }
   }
 
   void _mostrarAlerta(String titulo, String msg, Color color) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text("$titulo: $msg"), backgroundColor: color, duration: const Duration(seconds: 1)),
+      SnackBar(
+        content: Text("$titulo: $msg"),
+        backgroundColor: color,
+        duration: const Duration(seconds: 2),
+      ),
     );
   }
 
@@ -111,7 +148,7 @@ class _ProgramacionPageState extends State<ProgramacionPage> {
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
-            // --- NUEVA SECCIÓN: ENTRADA DE DATOS ---
+            // --- ENTRADA DE DATOS ---
             Row(
               children: [
                 Expanded(
@@ -128,49 +165,55 @@ class _ProgramacionPageState extends State<ProgramacionPage> {
                 ),
                 IconButton(
                   icon: const Icon(Icons.add_circle, color: Colors.green, size: 40),
-                  onPressed: insertarNuevoDato, // Inserta lo que escribas
+                  onPressed: insertarNuevoDato,
                 ),
               ],
             ),
 
             const SizedBox(height: 20),
 
-            // Botón de Carga masiva (API)
+            // Botón manual para refrescar datos desde la Web si se desea
             SizedBox(
               width: double.infinity,
-              child: ElevatedButton(
+              child: ElevatedButton.icon(
                 style: ElevatedButton.styleFrom(backgroundColor: Colors.indigo),
-                onPressed: cargarDatos,
-                child: const Text("Cargar Datos del JSON", style: TextStyle(color: Colors.white)),
+                onPressed: () {
+                  setState(() => cargando = true);
+                  cargarDatosDesdeWeb();
+                },
+                icon: const Icon(Icons.refresh, color: Colors.white),
+                label: const Text("Refrescar desde API Web", style: TextStyle(color: Colors.white)),
               ),
             ),
 
             const SizedBox(height: 15),
             const Divider(color: Colors.white24),
 
-            // LISTA DE DATOS
+            // LISTA DE DATOS CON ANIMACIÓN DE ESPERA
             Expanded(
-              child: datosJson.isEmpty
+              child: cargando
+                  ? const Center(child: CircularProgressIndicator(color: Colors.blue))
+                  : datosJson.isEmpty
                   ? const Center(child: Text("Memoria vacía", style: TextStyle(color: Colors.grey)))
                   : ListView.builder(
-                      itemCount: datosJson.length,
-                      itemBuilder: (context, index) {
-                        final item = datosJson[index];
-                        return Card(
-                          color: Colors.grey[900],
-                          child: ListTile(
-                            leading: CircleAvatar(
-                              backgroundColor: Colors.blue[900],
-                              child: Text("${index + 1}", style: const TextStyle(color: Colors.white, fontSize: 10)),
-                            ),
-                            title: Text("${item['title']}",
-                                style: const TextStyle(color: Colors.white, fontSize: 13)),
-                            subtitle: Text("ID: ${item['id']}",
-                                style: const TextStyle(color: Colors.white60, fontSize: 11)),
-                          ),
-                        );
-                      },
+                itemCount: datosJson.length,
+                itemBuilder: (context, index) {
+                  final item = datosJson[index];
+                  return Card(
+                    color: Colors.grey[900],
+                    child: ListTile(
+                      leading: CircleAvatar(
+                        backgroundColor: Colors.blue[900],
+                        child: Text("${index + 1}", style: const TextStyle(color: Colors.white, fontSize: 10)),
+                      ),
+                      title: Text("${item['title']}",
+                          style: const TextStyle(color: Colors.white, fontSize: 13)),
+                      subtitle: Text("ID: ${item['id']}",
+                          style: const TextStyle(color: Colors.white60, fontSize: 11)),
                     ),
+                  );
+                },
+              ),
             ),
 
             const SizedBox(height: 15),
