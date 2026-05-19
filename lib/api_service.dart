@@ -1,20 +1,23 @@
+// REEMPLAZO COMPLETO PARA api_service.dart
+import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'package:flutter/services.dart';
 
 class ApiService {
-  // Esta es la función que jose llamará desde sus botones
-  static Future<List<dynamic>> extraerDatos() async {
+  // Función estática para que cualquier página pueda traer datos de internet
+  static Future<List<dynamic>> extraerDatosDesdeWeb() async {
+    final url = Uri.parse('https://jsonplaceholder.typicode.com/todos');
+
     try {
-      // Paso 1: "Consumir" el origen de datos (el archivo que dio el ing)
-      final String response = await rootBundle.loadString('assets/datos.json');
+      final respuesta = await http.get(url);
 
-      // Paso 2: "Extraer" y convertir el texto a formato de lista
-      final List<dynamic> data = json.decode(response);
-
-      return data;
+      if (respuesta.statusCode == 200) {
+        // Si todo sale bien, devolvemos la lista decodificada
+        return jsonDecode(respuesta.body) as List<dynamic>;
+      } else {
+        throw Exception("Error en el servidor: ${respuesta.statusCode}");
+      }
     } catch (e) {
-      print("Error en la extracción: $e");
-      return []; // Devuelve lista vacía para no romper la UI del compañero
+      throw Exception("Error de red: $e");
     }
   }
 }

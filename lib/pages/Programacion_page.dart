@@ -10,36 +10,38 @@ class ProgramacionPage extends StatefulWidget {
 }
 
 class _ProgramacionPageState extends State<ProgramacionPage> {
-  // Unificamos el nombre de la lista a usar en todo el archivo
+  // Lista dinámica que funcionará como nuestra estructura de datos (Pila/Cola)
   List<dynamic> datosJson = [];
 
-  // Controlador para capturar lo que escribes en el teclado
+  // Controlador para capturar lo que escribes en el cuadro de texto
   final TextEditingController _controladorTexto = TextEditingController();
 
-  // Variable para controlar el estado de carga visual
+  // Variable boalana para controlar el estado de carga visual (UX)
   bool cargando = true;
 
-  // --- CARGA INICIAL DESDE LA API WEB (¡Aquí se ejecuta el cambio!) ---
+  // --- CARGA INICIAL (Se ejecuta automáticamente al abrir la pantalla) ---
   @override
   void initState() {
     super.initState();
     cargarDatosDesdeWeb();
   }
 
-  // --- FUNCIÓN QUE CONECTA CON LA URL DE INTERNET ---
+  // --- FUNCIÓN ASÍNCRONA PARA CONECTAR CON LA API WEB ---
   Future<void> cargarDatosDesdeWeb() async {
     final url = Uri.parse('https://jsonplaceholder.typicode.com/todos');
 
     try {
+      // Hacemos la petición HTTP GET a internet
       final respuesta = await http.get(url);
 
+      // El código HTTP 200 significa que el servidor web respondió con éxito
       if (respuesta.statusCode == 200) {
-        // Decodificamos el JSON que viene de la web
+        // Decodificamos el JSON puro de la web y lo transformamos en una Lista de Dart
         final List<dynamic> datosWeb = jsonDecode(respuesta.body);
 
         setState(() {
-          datosJson.clear();
-          datosJson.addAll(datosWeb); // Guardamos los 200 registros de la API
+          datosJson.clear();          // Limpiamos cualquier dato previo
+          datosJson.addAll(datosWeb); // Guardamos los 200 registros de la API web
           cargando = false;           // Apagamos la animación de carga
         });
         print("¡Éxito! Se cargaron ${datosWeb.length} elementos desde la API web");
@@ -49,11 +51,11 @@ class _ProgramacionPageState extends State<ProgramacionPage> {
       }
     } catch (e) {
       setState(() => cargando = false);
-      print("Error de red: $e");
+      print("Error de red (revisa tu conexión a internet): $e");
     }
   }
 
-  // --- INSERCIÓN DINÁMICA (MANIPULACIÓN) ---
+  // --- INSERCIÓN DINÁMICA (Estructuras de Datos: Insertar en la Cabeza) ---
   void insertarNuevoDato() {
     if (_controladorTexto.text.isNotEmpty) {
       setState(() {
@@ -66,9 +68,9 @@ class _ProgramacionPageState extends State<ProgramacionPage> {
         });
       });
       _controladorTexto.clear(); // Limpiar el cuadro de texto
-      _mostrarAlerta("INSERCIÓN", "Nuevo nodo agregado al inicio", Colors.green);
+      _mostrarAlerta("INSERCIÓN", "Nuevo nodo agregado al inicio (Cabeza)", Colors.green);
     } else {
-      _mostrarAlerta("ERROR", "Escribe algo para insertar", Colors.red);
+      _mostrarAlerta("ERROR", "Escribe algo para poder insertar", Colors.red);
     }
   }
 
@@ -77,11 +79,11 @@ class _ProgramacionPageState extends State<ProgramacionPage> {
     if (datosJson.isNotEmpty) {
       final eliminado = datosJson.last;
       setState(() {
-        datosJson.removeLast();
+        datosJson.removeLast(); // Elimina el último elemento que entró
       });
-      _mostrarAlerta("PILA (POP)", "Eliminado el último: ID ${eliminado['id']}", Colors.redAccent);
+      _mostrarAlerta("PILA (POP)", "Eliminado el último elemento de la pila: ID ${eliminado['id']}", Colors.redAccent);
     } else {
-      _mostrarAlerta("AVISO", "La memoria está vacía", Colors.orange);
+      _mostrarAlerta("AVISO", "La estructura (Pila) está vacía", Colors.orange);
     }
   }
 
@@ -90,15 +92,15 @@ class _ProgramacionPageState extends State<ProgramacionPage> {
     if (datosJson.isNotEmpty) {
       final eliminado = datosJson.first;
       setState(() {
-        datosJson.removeAt(0);
+        datosJson.removeAt(0); // Elimina el primer elemento de la lista (el más antiguo)
       });
-      _mostrarAlerta("COLA (FIFO)", "Eliminado el primero: ID ${eliminado['id']}", Colors.orangeAccent);
+      _mostrarAlerta("COLA (DEQUEUE)", "Eliminado el primer elemento de la cola: ID ${eliminado['id']}", Colors.orangeAccent);
     } else {
-      _mostrarAlerta("AVISO", "La memoria está vacía", Colors.orange);
+      _mostrarAlerta("AVISO", "La estructura (Cola) está vacía", Colors.orange);
     }
   }
 
-  // --- CONCEPTO DE NODOS (Inspección) ---
+  // --- CONCEPTO DE NODOS (Inspección de Punteros) ---
   void funcionNodos() {
     if (datosJson.isNotEmpty) {
       final nodoActual = datosJson[0];
@@ -108,8 +110,8 @@ class _ProgramacionPageState extends State<ProgramacionPage> {
           backgroundColor: Colors.grey[900],
           title: const Text("Inspección de Nodo (CABEZA)", style: TextStyle(color: Colors.white)),
           content: Text(
-            "Dato del Nodo: ${nodoActual['title']}\n\n"
-                "Puntero al Siguiente: ID ${datosJson.length > 1 ? datosJson[1]['id'] : 'null'}",
+            "Dato del Nodo Actual: ${nodoActual['title']}\n\n"
+                "Puntero al Siguiente Nodo: ID ${datosJson.length > 1 ? datosJson[1]['id'] : 'null'}",
             style: const TextStyle(color: Colors.white70),
           ),
           actions: [
@@ -121,10 +123,11 @@ class _ProgramacionPageState extends State<ProgramacionPage> {
         ),
       );
     } else {
-      _mostrarAlerta("AVISO", "No hay nodos para inspeccionar", Colors.orange);
+      _mostrarAlerta("AVISO", "No hay nodos en memoria para inspeccionar", Colors.orange);
     }
   }
 
+  // Utilidad para mostrar notificaciones rápidas en pantalla
   void _mostrarAlerta(String titulo, String msg, Color color) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -148,7 +151,7 @@ class _ProgramacionPageState extends State<ProgramacionPage> {
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
-            // --- ENTRADA DE DATOS ---
+            // --- ENTRADA DE DATOS (TEXTFIELD) ---
             Row(
               children: [
                 Expanded(
@@ -172,7 +175,7 @@ class _ProgramacionPageState extends State<ProgramacionPage> {
 
             const SizedBox(height: 20),
 
-            // Botón manual para refrescar datos desde la Web si se desea
+            // Botón para refrescar datos manualmente desde la API Web
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
@@ -189,7 +192,7 @@ class _ProgramacionPageState extends State<ProgramacionPage> {
             const SizedBox(height: 15),
             const Divider(color: Colors.white24),
 
-            // LISTA DE DATOS CON ANIMACIÓN DE ESPERA
+            // --- RENDERIZADO DE LA ESTRUCTURA EN TIEMPO REAL ---
             Expanded(
               child: cargando
                   ? const Center(child: CircularProgressIndicator(color: Colors.blue))
@@ -218,14 +221,14 @@ class _ProgramacionPageState extends State<ProgramacionPage> {
 
             const SizedBox(height: 15),
 
-            // BOTONES DE OPERACIÓN
+            // --- BOTONES DE CONTROL DE OPERACIONES ---
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: Row(
                 children: [
-                  _botonAccion("Colas", funcionPila, Colors.red[700]!),
+                  _botonAccion("Pilas", funcionPila, Colors.red[700]!),
                   const SizedBox(width: 10),
-                  _botonAccion("Pilas", funcionCola, Colors.orange[800]!),
+                  _botonAccion("Colas", funcionCola, Colors.orange[800]!),
                   const SizedBox(width: 10),
                   _botonAccion("Nodos", funcionNodos, Colors.teal[700]!),
                 ],
@@ -237,6 +240,7 @@ class _ProgramacionPageState extends State<ProgramacionPage> {
     );
   }
 
+  // Constructor de botones de operación personalizado
   Widget _botonAccion(String texto, VoidCallback accion, Color color) {
     return ElevatedButton(
       style: ElevatedButton.styleFrom(backgroundColor: color, foregroundColor: Colors.white),
