@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
-
-import 'pages/programacion_page.dart';
-import 'pages/estadistica_page.dart';
-import 'pages/metodos_page.dart';
-import 'pages/emprendedores_page.dart';
+import 'pages/botones/botones_curso.dart'; // Entra a pages/botones/
+import 'login_page.dart';                  // Al estar en la misma carpeta lib, se llama directo
 
 class MenuPage extends StatelessWidget {
   const MenuPage({super.key});
@@ -12,124 +9,43 @@ class MenuPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
-
       appBar: AppBar(
         title: const Text("Menú Principal"),
-        backgroundColor: Colors.blue[900],
+        backgroundColor: Colors.blue,
+        automaticallyImplyLeading: false,
       ),
-
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-
-              const Text(
-                "¡Bienvenido al Sistema!",
-                style: TextStyle(
-                  fontSize: 20,
-                  color: Colors.white,
+      body: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          children: [
+            const PanelBotonesCursos(),
+            const Spacer(),
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: OutlinedButton.icon(
+                onPressed: () {
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(builder: (context) => const LoginPage()),
+                        (route) => false,
+                  );
+                },
+                icon: const Icon(Icons.logout_rounded, color: Colors.redAccent),
+                label: const Text(
+                  'Cerrar Sesión',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
-              ),
-
-              const SizedBox(height: 30),
-
-              // Programación III
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) =>
-                        const ProgramacionPage(),
-                      ),
-                    );
-                  },
-
-                  child: const Text("Programación III"),
-                ),
-              ),
-
-              const SizedBox(height: 15),
-
-              // Estadística II
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) =>
-                        const EstadisticaPage(),
-                      ),
-                    );
-                  },
-
-                  child: const Text("Estadística II"),
-                ),
-              ),
-
-              const SizedBox(height: 15),
-
-              // Métodos Numéricos
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) =>
-                        const MetodosPage(),
-                      ),
-                    );
-                  },
-
-                  child: const Text("Métodos Numéricos"),
-                ),
-              ),
-
-              const SizedBox(height: 15),
-
-              // Emprendedores
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) =>
-                        const EmprendedoresPage(),
-                      ),
-                    );
-                  },
-
-                  child: const Text(
-                    "Emprendedores de Negocios",
-                    textAlign: TextAlign.center,
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: Colors.redAccent, width: 1.5),
+                  foregroundColor: Colors.redAccent,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
                   ),
                 ),
               ),
-
-              const SizedBox(height: 30),
-
-              ElevatedButton(
-                onPressed: () => Navigator.pop(context),
-
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red,
-                ),
-
-                child: const Text("Cerrar Sesión"),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
