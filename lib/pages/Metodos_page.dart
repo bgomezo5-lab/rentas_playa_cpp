@@ -10,10 +10,9 @@ class MetodosPage extends StatefulWidget {
   State<MetodosPage> createState() => _MetodosPageState();
 }
 
-
 class _MetodosPageState extends State<MetodosPage> {
-  final _controladorEcuacion = TextEditingController(text: "x^2 - 5");
-  final _controladorX0 = TextEditingController(text: "2.0");
+  final _controladorEcuacion = TextEditingController(text: "e^-x - x");
+  final _controladorX0 = TextEditingController(text: "0.5");
   final _controladorDelta = TextEditingController(text: "0.01");
   final _controladorTol = TextEditingController(text: "0.0001");
   final _controladorMaxIter = TextEditingController(text: "20");
@@ -24,18 +23,48 @@ class _MetodosPageState extends State<MetodosPage> {
   String _resultadoRaiz = "";
   bool _calculado = false;
 
-  // Evaluador matemático
+  // Evaluador matemático dinámico e inteligente
   double _evaluarFuncionDinamica(String ecuacionTexto, double valorX) {
     try {
-      String formateada = ecuacionTexto.replaceAll('x^2', '(x*x)');
-      formateada = formateada.replaceAll('x^3', '(x*x*x)');
+      // Limpiar espacios y pasar a minúsculas
+      String formateada = ecuacionTexto.trim().toLowerCase().replaceAll(' ', '');
 
+      // --- PARCHE DE SEGURIDAD PARA LA BASE EXPONENCIAL 'e' ---
+      // Reemplaza las diferentes escrituras de e^ por la función exp nativa
+      formateada = formateada.replaceAll('e^(-x)', 'exp(-x)');
+      formateada = formateada.replaceAll('e^-x', 'exp(-x)');
+      formateada = formateada.replaceAll('e^(x)', 'exp(x)');
+      formateada = formateada.replaceAll('e^x', 'exp(x)');
+
+      // --- PARCHE DE SEGURIDAD PARA POTENCIAS DE X ---
+      formateada = formateada.replaceAll('x^2', '(x*x)');
+      formateada = formateada.replaceAll('x^3', '(x*x*x)');
+      formateada = formateada.replaceAll('x^0.5', 'sqrt(x)');
+      formateada = formateada.replaceAll('x^(1/2)', 'sqrt(x)');
+
+      // Parsear la ecuación limpia
       final expression = Expression.parse(formateada);
-      final contexto = {'x': valorX, 'e': math.e, 'pi': math.pi};
+
+      // Mapeamos las funciones matemáticas de Dart para que el parser las reconozca en texto
+      final contexto = {
+        'x': valorX,
+        'e': math.e,
+        'pi': math.pi,
+        'cos': (num v) => math.cos(v.toDouble()),
+        'sin': (num v) => math.sin(v.toDouble()),
+        'tan': (num v) => math.tan(v.toDouble()),
+        'sqrt': (num v) => math.sqrt(v.toDouble()),
+        'ln': (num v) => math.log(v.toDouble()),
+        'exp': (num v) => math.exp(v.toDouble()), // Función exponencial mapeada
+      };
+
       const evaluator = ExpressionEvaluator();
       final resultado = evaluator.eval(expression, contexto);
 
-      return (resultado as num).toDouble();
+      if (resultado is num) {
+        return resultado.toDouble();
+      }
+      return double.nan;
     } catch (e) {
       return double.nan;
     }
@@ -44,14 +73,17 @@ class _MetodosPageState extends State<MetodosPage> {
   // Generador de puntos para la gráfica alrededor de la raíz
   void _generarPuntosGrafica(String ecuacion, double centroX) {
     List<FlSpot> puntos = [];
-    // Graficamos un rango cercano a la raíz (ej: centroX - 2 a centroX + 2)
-    double inicio = centroX - 2.5;
-    double fin = centroX + 2.5;
-    double paso = 0.1;
+    // Rango adaptado alrededor de la raíz encontrada para centrar la vista
+    double inicio = centroX - 2.0;
+    double fin = centroX + 2.0;
+    double paso = 0.05; // Paso fino para que la línea se vea completamente fluida
 
     for (double x = inicio; x <= fin; x += paso) {
+      // Protección contra dominios: Evitar evaluar números negativos si hay una raíz cuadrada
+      if (ecuacion.contains('sqrt') && x < 0) continue;
+
       double y = _evaluarFuncionDinamica(ecuacion, x);
-      if (!y.isNaN && !y.isInfinite) {
+      if (!y.isNaN && !y.isInfinite && y.abs() < 50) {
         puntos.add(FlSpot(x, y));
       }
     }
@@ -62,14 +94,18 @@ class _MetodosPageState extends State<MetodosPage> {
 
   void _calcularSecanteModificada() {
     String ecuacionTxt = _controladorEcuacion.text.trim().toLowerCase();
-    double xi = double.tryParse(_controladorX0.text) ?? 1.0;
+    double xi = double.tryParse(_controladorX0.text) ?? 0.5;
     double delta = double.tryParse(_controladorDelta.text) ?? 0.01;
     double tolerancia = double.tryParse(_controladorTol.text) ?? 0.0001;
     int maxIteraciones = int.tryParse(_controladorMaxIter.text) ?? 20;
 
+    // Validación inicial antes de entrar al bucle
     if (_evaluarFuncionDinamica(ecuacionTxt, xi).isNaN) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Error en la sintaxis de la ecuación"), backgroundColor: Colors.redAccent),
+        const SnackBar(
+            content: Text("Error en la sintaxis de la ecuación o valor inicial inválido"),
+            backgroundColor: Colors.redAccent
+        ),
       );
       return;
     }
@@ -78,18 +114,22 @@ class _MetodosPageState extends State<MetodosPage> {
     double errorAproximado = 100.0;
     int iteracion = 0;
     double xSiguiente = 0.0;
-    bool convergenciaExitosa = false;
 
     while (iteracion < maxIteraciones) {
       double fx = _evaluarFuncionDinamica(ecuacionTxt, xi);
       double f_xi_delta = _evaluarFuncionDinamica(ecuacionTxt, xi + (delta * xi));
 
+      // Evitar divisiones peligrosas por cero
       if ((f_xi_delta - fx).abs() < 1e-12) break;
 
       xSiguiente = xi - (delta * xi * fx) / (f_xi_delta - fx);
 
       if (iteracion > 0) {
-        errorAproximado = ((xSiguiente - xi) / xSiguiente).abs() * 100;
+        if (xSiguiente.abs() > 1e-12) {
+          errorAproximado = ((xSiguiente - xi) / xSiguiente).abs() * 100;
+        } else {
+          errorAproximado = (xSiguiente - xi).abs() * 100;
+        }
       }
 
       temporalIteraciones.add({
@@ -99,8 +139,7 @@ class _MetodosPageState extends State<MetodosPage> {
         "error": iteracion == 0 ? "---" : "${errorAproximado.toStringAsFixed(5)}%"
       });
 
-      if (iteracion > 0 && errorAproximado < tolerancia) {
-        convergenciaExitosa = true;
+      if (iteracion > 0 && errorAproximado < (tolerancia * 100)) {
         xi = xSiguiente;
         break;
       }
@@ -165,7 +204,7 @@ class _MetodosPageState extends State<MetodosPage> {
             ),
             const SizedBox(height: 10),
 
-            // Contenedor dinámico con pestañas: una para la Tabla y otra para la Gráfica
+            // Contenedor dinámico con pestañas
             if (_calculado)
               Expanded(
                 child: DefaultTabController(
@@ -191,10 +230,14 @@ class _MetodosPageState extends State<MetodosPage> {
                               child: LineChart(
                                 LineChartData(
                                   gridData: FlGridData(show: true, drawVerticalLine: true),
-                                  titlesData: FlTitlesData(show: true),
+                                  titlesData: FlTitlesData(
+                                    show: true,
+                                    topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                                    rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                                  ),
                                   borderData: FlBorderData(show: true, border: Border.all(color: Colors.white30)),
                                   lineBarsData: [
-                                    // Curva de la función
+                                    // Curva de la función f(x)
                                     LineChartBarData(
                                       spots: _puntosGrafica,
                                       isCurved: true,
@@ -203,7 +246,7 @@ class _MetodosPageState extends State<MetodosPage> {
                                       isStrokeCapRound: true,
                                       dotData: FlDotData(show: false),
                                     ),
-                                    // Punto de la raíz encontrada
+                                    // Punto rojo marcando la raíz aproximada sobre el eje X
                                     LineChartBarData(
                                       spots: [FlSpot(_raizEncontrada, 0)],
                                       show: true,
