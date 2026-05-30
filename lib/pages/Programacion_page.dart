@@ -10,13 +10,17 @@ class ProgramacionPage extends StatefulWidget {
 }
 
 class _ProgramacionPageState extends State<ProgramacionPage> {
-  // Lista dinámica que funcionará como nuestra estructura de datos (Pila/Cola)
+  // Lista principal que se renderiza en la UI (Estructura Dinámica)
   List<dynamic> datosJson = [];
+
+  // NUEVA ESTRUCTURA: Almacena en memoria RAM local los nodos creados por el usuario
+  // para que sobrevivan a las peticiones HTTP GET de la API web
+  List<dynamic> nodosCreadosLocalmente = [];
 
   // Controlador para capturar lo que escribes en el cuadro de texto
   final TextEditingController _controladorTexto = TextEditingController();
 
-  // Variable boalana para controlar el estado de carga visual (UX)
+  // Variable booleana para controlar el estado de carga visual (UX)
   bool cargando = true;
 
   // --- CARGA INICIAL (Se ejecuta automáticamente al abrir la pantalla) ---
@@ -40,11 +44,18 @@ class _ProgramacionPageState extends State<ProgramacionPage> {
         final List<dynamic> datosWeb = jsonDecode(respuesta.body);
 
         setState(() {
-          datosJson.clear();          // Limpiamos cualquier dato previo
-          datosJson.addAll(datosWeb); // Guardamos los 200 registros de la API web
+          datosJson.clear();          // Limpiamos la estructura de la UI
+
+          // --- AQUÍ ESTÁ EL TRUCO DE PROGRAMACIÓN III (Combinación de Estados) ---
+          // Primero reinyectamos los nodos que el usuario creó localmente para que aparezcan arriba
+          datosJson.addAll(nodosCreadosLocalmente);
+
+          // Luego anexamos los 200 registros limpios que vinieron de la API Web
+          datosJson.addAll(datosWeb);
+
           cargando = false;           // Apagamos la animación de carga
         });
-        print("¡Éxito! Se cargaron ${datosWeb.length} elementos desde la API web");
+        print("¡Éxito! Se sincronizaron ${nodosCreadosLocalmente.length} nodos locales y ${datosWeb.length} de la API.");
       } else {
         setState(() => cargando = false);
         print("Error en el servidor: ${respuesta.statusCode}");
@@ -58,17 +69,24 @@ class _ProgramacionPageState extends State<ProgramacionPage> {
   // --- INSERCIÓN DINÁMICA (Estructuras de Datos: Insertar en la Cabeza) ---
   void insertarNuevoDato() {
     if (_controladorTexto.text.isNotEmpty) {
+      // Creamos el nuevo mapa estructurado (Nodo)
+      final nuevoNodo = {
+        "userId": 1,
+        "id": datosJson.isEmpty ? 1 : datosJson.map((e) => e['id'] as int).reduce((a, b) => a > b ? a : b) + 1,
+        "title": _controladorTexto.text,
+        "completed": false
+      };
+
       setState(() {
-        // Insertamos un nuevo "Nodo" al inicio de la lista (Complejidad O(1))
-        datosJson.insert(0, {
-          "userId": 1,
-          "id": datosJson.isEmpty ? 1 : datosJson.map((e) => e['id'] as int).reduce((a, b) => a > b ? a : b) + 1,
-          "title": _controladorTexto.text,
-          "completed": false
-        });
+        // 1. Lo respaldamos en nuestra lista de persistencia local en memoria
+        nodosCreadosLocalmente.insert(0, nuevoNodo);
+
+        // 2. Lo insertamos al inicio de la lista visual de la UI (Cabeza - Complejidad O(1) lógica)
+        datosJson.insert(0, nuevoNodo);
       });
+
       _controladorTexto.clear(); // Limpiar el cuadro de texto
-      _mostrarAlerta("INSERCIÓN", "Nuevo nodo agregado al inicio (Cabeza)", Colors.green);
+      _mostrarAlerta("INSERCIÓN", "Nuevo nodo agregado a la Cabeza y respaldado localmente", Colors.green);
     } else {
       _mostrarAlerta("ERROR", "Escribe algo para poder insertar", Colors.red);
     }
@@ -79,7 +97,10 @@ class _ProgramacionPageState extends State<ProgramacionPage> {
     if (datosJson.isNotEmpty) {
       final eliminado = datosJson.last;
       setState(() {
-        datosJson.removeLast(); // Elimina el último elemento que entró
+        datosJson.removeLast(); // Elimina el último elemento de la estructura global
+
+        // Si el elemento eliminado pertenecía a los creados localmente, lo quitamos del respaldo
+        nodosCreadosLocalmente.removeWhere((nodo) => nodo['id'] == eliminado['id']);
       });
       _mostrarAlerta("PILA (POP)", "Eliminado el último elemento de la pila: ID ${eliminado['id']}", Colors.redAccent);
     } else {
@@ -92,7 +113,10 @@ class _ProgramacionPageState extends State<ProgramacionPage> {
     if (datosJson.isNotEmpty) {
       final eliminado = datosJson.first;
       setState(() {
-        datosJson.removeAt(0); // Elimina el primer elemento de la lista (el más antiguo)
+        datosJson.removeAt(0); // Elimina el primer elemento de la lista (Cabeza)
+
+        // Si el elemento eliminado pertenecía a los creados localmente, lo quitamos del respaldo
+        nodosCreadosLocalmente.removeWhere((nodo) => nodo['id'] == eliminado['id']);
       });
       _mostrarAlerta("COLA (DEQUEUE)", "Eliminado el primer elemento de la cola: ID ${eliminado['id']}", Colors.orangeAccent);
     } else {
@@ -226,9 +250,9 @@ class _ProgramacionPageState extends State<ProgramacionPage> {
               scrollDirection: Axis.horizontal,
               child: Row(
                 children: [
-                  _botonAccion("Pilas", funcionPila, Colors.red[700]!),
+                  _botonAccion("Colas", funcionPila, Colors.red[700]!),
                   const SizedBox(width: 10),
-                  _botonAccion("Colas", funcionCola, Colors.orange[800]!),
+                  _botonAccion("Pilas", funcionCola, Colors.orange[800]!),
                   const SizedBox(width: 10),
                   _botonAccion("Nodos", funcionNodos, Colors.teal[700]!),
                 ],
